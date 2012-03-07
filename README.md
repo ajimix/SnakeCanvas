@@ -1,6 +1,7 @@
 # Mootools Snake game to test canvas
 
 Simple Snake game done with Mootools.
+**The game works but its not finished.**
 
 It is licensed under the Apache 2 license.
 
