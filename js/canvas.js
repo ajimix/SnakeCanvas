@@ -1,63 +1,88 @@
+/**
+* A test using Moootools classes and canvas for a Snake game :)
+* 
+* Licensed under the Apache License 2.0
+*
+* Author: Ajimix [github.com/ajimix], Jonathan Gimeno
+* Version: tests
+*/
+
 window.addEvent('domready', function() {
+
+    // Class that will generate the snake
     var Snake = new Class({
-        initialize: function(canvas) {
+        Implements: Options,
+
+        options: {
+            initialSize: 3
+        },
+
+        initialize: function(canvas, options) {
+            this.setOptions(options);
+            this.snakeSize = this.options.initialSize;
             this.canvas = canvas;
-            this.size = 3;
+            // Get the half of the canvas so we can start from the middle
             var halfXSize = Math.floor(this.canvas.size.x/8/2), halfYSize = Math.floor(this.canvas.size.y/8/2);
-            this.cuerpo = [new Punto(halfXSize,halfYSize), new Punto(halfXSize-1,halfYSize), new Punto(halfXSize-2,halfYSize)];
-            this.direccion = 'right';
-            this.cabeza = 0;
+            // Snake initialization
+            this.snakeBody = [];
+            for (var i = 0; i < this.options.initialSize; i++) {
+                this.snakeBody.push(new Dot(halfXSize - i, halfYSize));
+            }
+            this.direction = 'right';
+            this.head = 0;
             this.temp = new Array();
         },
-        dibuja: function() {
+        draw: function() {
             var canvas = this.canvas;
-            this.cuerpo.each(function(punto, indice) {
+            this.snakeBody.each(function(dot, indice) {
                 canvas.fillStyle = "rgb(200,0,0)";
-                canvas.fillRect(punto.x * 8, punto.y * 8, 8, 8);
+                canvas.fillRect(dot.x * 8, dot.y * 8, 8, 8);
             });
         },
-        mueve: function () {
-            for(var i=0; i<this.size; i++) {
-                this.temp[i] = Object.clone(this.cuerpo[i]);
+        moves: function () {
+            for(var i = 0; i < this.snakeSize; i++) {
+                this.temp[i] = Object.clone(this.snakeBody[i]);
                 if(i == 0) {
-                    if(this.direccion == 'right') {
-                        this.cuerpo[i].x++;
-                    } else if(this.direccion == 'down') {
-                        this.cuerpo[i].y++;
-                    } else if(this.direccion == 'up') {
-                        this.cuerpo[i].y--;
-                    } else if(this.direccion == 'left') {
-                        this.cuerpo[i].x--;
+                    if(this.direction == 'right') {
+                        this.snakeBody[i].x++;
+                    } else if(this.direction == 'down') {
+                        this.snakeBody[i].y++;
+                    } else if(this.direction == 'up') {
+                        this.snakeBody[i].y--;
+                    } else if(this.direction == 'left') {
+                        this.snakeBody[i].x--;
                     }
                 } else {
-                    this.cuerpo[i] = this.temp[i-1];
+                    this.snakeBody[i] = this.temp[i-1];
                 }
             }
         },
         setDireccion: function(direccion) {
-            this.direccion = direccion;
+            this.direction = direccion;
         },
-        getCabeza: function() {
-            return this.cuerpo[0];
+        getHead: function() {
+            return this.snakeBody[0];
         },
-        crece: function(size) {
+        grow: function(size) {
             if(size == null) size = 1;
-            this.size += size;
+            this.snakeSize += size;
         },
-        setCabeza: function (x,y) {
-            this.cuerpo[this.cabeza].x = x;
-            this.cuerpo[this.cabeza].y = y;
+        setHead: function (x,y) {
+            this.snakeBody[this.head].x = x;
+            this.snakeBody[this.head].y = y;
         }
     });
 
-    var Punto = new Class({
+    // Each snake will be composed of dots
+    var Dot = new Class({
         initialize: function(x,y) {
             this.x = x;
             this.y = y;
         }
     });
 
-    var Manzana = new Class({
+    // Apples are points you have to eat
+    var Apple = new Class({
         initialize: function(canvas,x,y) {
             this.canvas = canvas;
             this.x = x;
@@ -67,120 +92,133 @@ window.addEvent('domready', function() {
             this.x = Number.random(0,Math.floor((this.canvas.size.x/8))-1);
             this.y = Number.random(0,Math.floor((this.canvas.size.y/8))-1);
         },
-        dibuja: function() {
+        draw: function() {
             this.canvas.fillStyle = "rgb(34,139,34)";
             this.canvas.fillRect(this.x * 8, this.y * 8, 8, 8);
         }
     });
     
-    var Cereza = new Class({
+    // Cherries are special items that makes the snake grow bigger and get extra points :D
+    var Cherry = new Class({
         initialize: function(canvas) {
             this.canvas = canvas;
             this.timeOnScreen = 1;
             this.x = Number.random(0,Math.floor((this.canvas.size.x/8))-1);
             this.y = Number.random(0,Math.floor((this.canvas.size.y/8))-1);
         },
-        dibuja: function() {
+        draw: function() {
             this.canvas.fillStyle = "rgb(255,0,0)";
             this.canvas.fillRect(this.x * 8, this.y * 8, 8, 8);
         }
     });
 
-    var Juego = new Class({
+    // This class manages all the game itself
+    var Game = new Class({
+        Implements: Options,
 
-        initialize: function() {
-            this.canvas = $('canvas').getContext('2d');
-            this.canvas.size = $('canvas').getSize();
-            this.serpiente = new Snake(this.canvas);
-            this.manzana = new Manzana(this.canvas,Math.floor(this.canvas.size.x/8/2),Math.floor(this.canvas.size.y/8/2));
+        options: {
+            initialSnakeSize: 3
+        },
+
+        initialize: function(canvas, options) {
+            this.setOptions(options);
+            this.canvas = canvas.getContext('2d');
+            this.canvas.size = canvas.getSize();
+            this.snake = new Snake(this.canvas, {initialSize: this.options.initialSnakeSize});
+            this.apple = new Apple(this.canvas, Math.floor(this.canvas.size.x/8/2), Math.floor(this.canvas.size.y/8/2));
             this.lastKey = 'right';
-            this.estado = 'juego';
+            this.state = 'juego';
             window.addEvent('keydown', function(ev) {
                 if(ev.key == 'up' || ev.key == 'down' || ev.key == 'left' || ev.key == 'right') {
                     if((this.lastKey == 'right' && ev.key != 'left') || (this.lastKey == 'up' && ev.key != 'down') || (this.lastKey == 'left' && ev.key != 'right') || (this.lastKey == 'down' && ev.key != 'up')) {
-                        this.serpiente.setDireccion(ev.key);
+                        this.snake.setDireccion(ev.key);
                         this.lastKey = ev.key;
                     }
                 }
             }.bind(this));
             this.currentSpeed = 200;
-            this.periodicalId = this.bucle.periodical(this.currentSpeed, this);
+            this.periodicalId = this.loop.periodical(this.currentSpeed, this);
             this.lastExtrasScore = 0;
         },
-        bucle: function () {
-            this.dibuja();
-            this.actualiza();
-            this.comprueba();
+        loop: function () {
+            this.draw();
+            this.update();
+            this.check();
             this.extras();
         },
-        dibuja: function() {
-            this.dibujaTablero();
-            this.serpiente.dibuja();
-            this.manzana.dibuja();
-            if(this.cereza != null) this.cereza.dibuja();
+        draw: function() {
+            this.drawBoard();
+            this.snake.draw();
+            this.apple.draw();
+            if(this.cherry != null) this.cherry.draw();
         },
-        actualiza: function() {
-            this.serpiente.mueve();
+        update: function() {
+            this.snake.moves();
         },
-        comprueba: function() {
+        check: function() {
             var xSize = Math.floor(this.canvas.size.x/8), ySize = Math.floor(this.canvas.size.y/8);
-            var cabeza = this.serpiente.getCabeza();
-            if(cabeza.x == this.manzana.x && cabeza.y == this.manzana.y) {
-                this.manzana.setNew();
-                this.serpiente.crece();
-                this.subirDificultad();
+            var head = this.snake.getHead();
+            if(head.x == this.apple.x && head.y == this.apple.y) {
+                this.apple.setNew();
+                this.snake.grow();
+                this.raiseLevel();
             }
-            if(this.cereza != null && cabeza.x == this.cereza.x && cabeza.y == this.cereza.y) {
-                this.serpiente.crece(3);
-                this.cereza = null;
-                this.subirDificultad();
+            if(this.cherry != null && head.x == this.cherry.x && head.y == this.cherry.y) {
+                this.snake.grow(3);
+                this.cherry = null;
+                this.raiseLevel();
             }
-            if(cabeza.x > xSize-1 || cabeza.x < 0 || cabeza.y > ySize-1 || cabeza.y < 0) { // Fuera de la pantalla
-//                console.log('pierdes');
+            if(head.x > xSize-1 || head.x < 0 || head.y > ySize-1 || head.y < 0) { // Border touched
+//                console.log('You lose!');
             }
-            if(cabeza.x > xSize-1) {
-                this.serpiente.setCabeza(0, cabeza.y);
+            if(head.x > xSize-1) {
+                this.snake.setHead(0, head.y);
             }
-            if(cabeza.x < 0) {
-                this.serpiente.setCabeza(xSize-1, cabeza.y);
+            if(head.x < 0) {
+                this.snake.setHead(xSize-1, head.y);
             }
-            if(cabeza.y > ySize-1) {
-                this.serpiente.setCabeza(cabeza.x, 0);
+            if(head.y > ySize-1) {
+                this.snake.setHead(head.x, 0);
             }
-            if(cabeza.y < 0) {
-                this.serpiente.setCabeza(cabeza.x, ySize-1);
+            if(head.y < 0) {
+                this.snake.setHead(head.x, ySize-1);
             }
             var i = 0;
-            this.serpiente.cuerpo.each(function(cuerpo){
-                if(i != 0 && cabeza.x == cuerpo.x && cabeza.y == cuerpo.y) {
-                    console.log("Chocado con si mismo");
+            this.snake.snakeBody.each(function(body){
+                if(i != 0 && head.x == body.x && head.y == body.y) {
+                    console.log("Crashed with itself");
                 }
                 i++;
             });
             
         },
+        // Function that control the extras (cherry right now)
         extras: function() {
-            if(this.serpiente.size != this.lastExtrasScore && this.serpiente.size % 5 == 0 && this.cereza == null) {
-                this.cereza = new Cereza(this.canvas);
-            } else if (this.cereza != null) {
-                this.cereza.timeOnScreen++;
-                if(this.cereza.timeOnScreen == 50) {
-                    this.cereza = null;
+            if(this.snake.size != this.lastExtrasScore && this.snake.size % 5 == 0 && this.cherry == null) {
+                this.cherry = new Cereza(this.canvas);
+            } else if (this.cherry != null) {
+                this.cherry.timeOnScreen++;
+                if(this.cherry.timeOnScreen == 50) {
+                    this.cherry = null;
                 }
             }
-            this.lastExtrasScore = this.serpiente.size;
-            $('canvas').tween('-webkit-transform', 'rotate('+((this.serpiente.size-3)*5)+'deg)');
+            this.lastExtrasScore = this.snake.size;
+            //$('canvas').tween('-webkit-transform', 'rotate('+((this.snake.size-3)*5)+'deg)');
         },
-        subirDificultad: function() {
+        raiseLevel: function() {
             this.currentSpeed -= 5;
             clearInterval(this.periodicalId);
-            this.periodicalId = this.bucle.periodical(this.currentSpeed, this);
+            this.periodicalId = this.loop.periodical(this.currentSpeed, this);
         },
-        dibujaTablero: function() {
+        drawBoard: function() {
             this.canvas.fillStyle = "rgb(0,0,0)";
             this.canvas.fillRect (0, 0, this.canvas.size.x, this.canvas.size.y);
         }
 
     });
-    juego = new Juego();
+
+    // Canvas, options
+    var game = new Game($('canvas'), {
+        initialSnakeSize: 3
+    });
 });
